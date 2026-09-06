@@ -7,13 +7,12 @@ pipeline {
         }
     }
 
-    stages {
-
-        stage('Checkout') {
-            steps {
-                sh 'echo passed'
-            }
-        }
+    stage('Checkout') {
+    steps {
+        git branch: 'main',
+            url: 'https://github.com/deekshithkumarcl-collab/Jenkins-Zero-To-Hero.git'
+          }
+      }
 
         stage('Check Java') {
             steps {
