@@ -3,20 +3,21 @@ pipeline {
     agent {
         docker {
             image 'deekshith9900/maven-abhishek-docker-agent:v2'
-            args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
     stages {
-
 
         stage('Check Java') {
             steps {
                 sh '''
                     echo "===== JAVA ====="
                     java -version
+
                     echo "===== MAVEN ====="
                     mvn -version
+
                     echo "===== JAVA HOME ====="
                     echo $JAVA_HOME
                 '''
@@ -26,7 +27,11 @@ pipeline {
         stage('Build and Test') {
             steps {
                 sh 'ls -ltr'
-                sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package'
+
+                sh '''
+                    cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+                    mvn clean package
+                '''
             }
         }
 
@@ -34,6 +39,7 @@ pipeline {
             environment {
                 SONAR_URL = "http://54.89.6.26:9000"
             }
+
             steps {
                 withCredentials([
                     string(
@@ -56,10 +62,13 @@ pipeline {
             environment {
                 DOCKER_IMAGE = "deekshith9900/ultimate-cicd:${BUILD_NUMBER}"
             }
+
             steps {
                 script {
+
                     sh '''
                         cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+
                         docker build -t ${DOCKER_IMAGE} .
                     '''
 
@@ -80,6 +89,7 @@ pipeline {
                 GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
                 GIT_USER_NAME = "deekshithkumarcl-collab"
             }
+
             steps {
                 withCredentials([
                     string(
@@ -97,7 +107,7 @@ pipeline {
                         git add \
                             java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
 
-                        git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+                        git commit -m "Update deployment image to version ${BUILD_NUMBER}" || true
 
                         git push \
                             https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git \
