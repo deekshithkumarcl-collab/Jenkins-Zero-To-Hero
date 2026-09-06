@@ -7,12 +7,14 @@ pipeline {
         }
     }
 
-    stage('Checkout') {
-    steps {
-        git branch: 'main',
-            url: 'https://github.com/deekshithkumarcl-collab/Jenkins-Zero-To-Hero.git'
-          }
-      }
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/deekshithkumarcl-collab/Jenkins-Zero-To-Hero.git'
+            }
+        }
 
         stage('Check Java') {
             steps {
@@ -40,9 +42,18 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')
+                    string(
+                        credentialsId: 'sonarqube',
+                        variable: 'SONAR_AUTH_TOKEN'
+                    )
                 ]) {
-                    sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.10.0.2594:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}'
+                    sh '''
+                        cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+
+                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.10.0.2594:sonar \
+                            -Dsonar.login=$SONAR_AUTH_TOKEN \
+                            -Dsonar.host.url=$SONAR_URL
+                    '''
                 }
             }
         }
@@ -50,15 +61,20 @@ pipeline {
         stage('Build and Push Docker Image') {
             environment {
                 DOCKER_IMAGE = "deekshith9900/ultimate-cicd:${BUILD_NUMBER}"
-                REGISTRY_CREDENTIALS = credentials('docker-cred')
             }
             steps {
                 script {
-                    sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && docker build -t ${DOCKER_IMAGE} .'
+                    sh '''
+                        cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+                        docker build -t ${DOCKER_IMAGE} .
+                    '''
 
                     def dockerImage = docker.image("${DOCKER_IMAGE}")
 
-                    docker.withRegistry('https://index.docker.io/v1/', 'docker-cred') {
+                    docker.withRegistry(
+                        'https://index.docker.io/v1/',
+                        'docker-cred'
+                    ) {
                         dockerImage.push()
                     }
                 }
@@ -72,23 +88,29 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    string(credentialsId: 'github', variable: 'GITHUB_TOKEN')
+                    string(
+                        credentialsId: 'github',
+                        variable: 'GITHUB_TOKEN'
+                    )
                 ]) {
                     sh '''
-                        git config user.email "YOUR_GITHUB_EMAIL"
+                        git config user.email "deekshithkumarcl@gmail.com"
                         git config user.name "Deekshith Kumar"
 
-                        sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                        sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" \
+                            java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
 
-                        git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                        git add \
+                            java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
 
                         git commit -m "Update deployment image to version ${BUILD_NUMBER}"
 
-                        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+                        git push \
+                            https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git \
+                            HEAD:main
                     '''
                 }
             }
         }
-
     }
 }
